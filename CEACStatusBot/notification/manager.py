@@ -17,7 +17,7 @@ class NotificationManager():
     def send(self,) -> None:
         res = query_status(self.__location, self.__number, self.__passport_number, self.__surname, self.__captchaHandle)
 
-        if res['status'] == "Refused":
+        if res['status'] != "Issued":
             import os,pytz,datetime
             try:
                 TIMEZONE = os.environ["TIMEZONE"]
@@ -30,7 +30,7 @@ class NotificationManager():
                 print("TIMEZONE Error")
                 localTime = datetime.datetime.now()
 
-            if localTime.hour < 8 or localTime.hour > 22:
+            if localTime.hour < 8 or localTime.hour > 17:
                 print("In Manager, no disturbing time")
                 return
             if localTime.minute > 30:
