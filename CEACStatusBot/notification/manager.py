@@ -30,7 +30,7 @@ class NotificationManager():
                 print("TIMEZONE Error")
                 localTime = datetime.datetime.now()
 
-            if localTime.hour < 8 or localTime.hour > 17:
+            if localTime.hour < 8 or localTime.hour > 16:
                 print("In Manager, no disturbing time")
                 return
 
