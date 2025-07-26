@@ -1,16 +1,16 @@
 # CEACStatusBot🤖
 
 [查看中文文档](README.Chinese.md)
- 
-automatically check your U.S. visa application status in [CEAC](https://ceac.state.gov/CEACStatTracker/Status.aspx?App=NIV) and notice you instantly!
+
+Automatically check your U.S. visa application status in [CEAC](https://ceac.state.gov/CEACStatTracker/Status.aspx?App=NIV) and notify you instantly when it updates! 
 
 ## Usage
 
-You can deploy it to your own machine, but it is highly recomanded to use Github Actions. 
+You can deploy it to your own machine, but it is highly recommended to use Github Actions. 
 
 ### Environment Variables
 
-- LOCATION: the location code where you applied for your visa. To find the corresponding code for the embassy, please refer to [this table](LOCATION.md).
+- LOCATION: the location where you applied for your visa. To find the corresponding location name for the embassy, please refer to [this table](LOCATION.md). Use the embassy location name directly, such as `CHINA, BEIJING`.
 
 - NUMBER: your Application ID or Case Number help icon (e.g., AA0020AKAX or 2012118 345 0001) 
 
@@ -19,6 +19,8 @@ You can deploy it to your own machine, but it is highly recomanded to use Github
 - SURNAME: first 5 Letters of surname
 
 - TIMEZONE: optional, set your timezone to avoid disturbing during sleep. :-) Some example: `Asia/Shanghai` `America/New_York`
+
+- GH_TOKEN: to access previous status, you need to set a Github token with `repo` scope. You can create a new token in Github -> Settings -> Developer settings -> Personal access tokens.
 
 #### Notification by Email
 
@@ -36,7 +38,7 @@ Add the following env variables if you want to send notification by email.
 
 Add the following env variables if you want to send notification by a Telegram bot.
 
-Create a Telegram bot and get the info below according to [this tutorial](https://www.cytron.io/tutorial/how-to-create-a-telegram-bot-get-the-api-key-and-chat-id).
+Create a Telegram bot and get the info below according to [this tutorial](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a).
 
 - TG_BOT_TOKEN: the bot token
 
@@ -50,6 +52,15 @@ Create a Telegram bot and get the info below according to [this tutorial](https:
 ![image](docs/github.new.secret.png)
 
 3. check your workflow in Actions and your Mailbox / Telegram
+
+### Local Usage
+You can also run this bot locally. Simply clone this repo and use uv to build the environment:
+
+```bash
+pip install uv # if you don't have uv installed
+uv sync
+uv run trigger.py
+```
 
 ## TODO
 
