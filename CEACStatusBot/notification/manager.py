@@ -20,6 +20,7 @@ class NotificationManager():
 
     def send(self) -> None:
         res = query_status(self.__location, self.__number, self.__passport_number, self.__surname, self.__captchaHandle)
+        print(res)
         current_status = res['status']
 
         # Load the previous statuses from the file
