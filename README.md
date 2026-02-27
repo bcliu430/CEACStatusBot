@@ -20,6 +20,9 @@ You can deploy it to your own machine, but it is highly recommended to use Githu
 
 - TIMEZONE: optional, set your timezone to avoid disturbing during sleep. :-) Some example: `Asia/Shanghai` `America/New_York`
 
+- ACTIVE_HOURS: optional, set the active hours to avoid disturbing during sleep. :-) Use 24 hour format. Some example: 08:00-12:00
+
+
 - GH_TOKEN: to access previous status, you need to set a Github token with `repo` scope. You can create a new token in Github -> Settings -> Developer settings -> Personal access tokens.
 
 #### Notification by Email
@@ -54,7 +57,9 @@ Create a Telegram bot and get the info below according to [this tutorial](https:
 3. check your workflow in Actions and your Mailbox / Telegram
 
 ### Local Usage
-You can also run this bot locally. Simply clone this repo and use uv to build the environment:
+You can also run this bot locally. 
+For local development, create a `.env` file in the project root to store your environment variables (e.g., `LOCATION=...`, `NUMBER=...`). The script will automatically load them. Or copy the `.env.example` file and rename it to `.env` and fill in the values.
+Then, use uv to build the environment:
 
 ```bash
 pip install uv # if you don't have uv installed

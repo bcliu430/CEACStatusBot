@@ -1,2 +1,4 @@
 __pycache__
 .venv
+.env
+status_record.json

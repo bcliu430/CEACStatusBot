@@ -22,7 +22,9 @@
 
 - SURNAME: 姓的前5个英文字母
 
-- TIMEZONE: 可选，设置自己的时区，以免打扰睡眠。例如: `Asia/Shanghai` 或 `America/New_York`。如果你设置了时区，程序默认不会在你的时区的晚上10点到第二天早上8点发送。**注意**: 这里使用的是IANA时区数据库的时区表示法，并不是简单的地理位置的组合。例如，如果你希望使用北京时间，你的时区应该是`Asia/Shanghai`而**不是** ~~`Asia/Beijing`~~
+- TIMEZONE: 可选，设置你所在的时区，以避免在睡眠时间收到打扰。例如: `Asia/Shanghai` 或 `America/New_York`。**注意**: 这里使用的是IANA时区数据库的时区表示法，并不是简单的地理位置的组合。例如，如果你希望使用北京时间，你的时区应该是`Asia/Shanghai`而**不是** ~~`Asia/Beijing`~~
+
+- ACTIVE_HOURS: 可选，设置接收通知的活跃时间段，以避免在睡眠时间收到打扰。使用24小时格式。例如: `08:00-22:00`
 
 - GH_TOKEN: 要访问之前的状态，您需要设置一个具有`repo`权限的Github令牌。您可以在Github -> 设置 -> 开发者设置 -> 个人访问令牌中创建一个新的令牌。
 
@@ -62,12 +64,23 @@ Telegram Bot [创建教程](https://www.cytron.io/tutorial/how-to-create-a-teleg
 
 3. 查看 `Github Actions` 中的 `workflows` 是否正常运行并检查邮箱是否收到邮件。
 
+### 本地使用
+
+对于本地使用，可以在项目根目录创建一个 `.env` 文件来存储你的环境变量 (例如 `LOCATION=...`, `NUMBER=...`)，脚本会自动加载它们。或者拷贝模版文件 `.env.example` 并重命名为 `.env`来使用。
+然后使用 uv 构建环境：
+
+```bash
+pip install uv # 如果你没有安装 uv
+uv sync
+uv run trigger.py
+```
+
 
 ## 待办事项
 
 - [x] 向多个邮箱发送邮件。
 
-- [ ] 增加更多第三方通知服务。
+- [x] 增加更多第三方通知服务。
 
 - [ ] 更人性化的界面。
 

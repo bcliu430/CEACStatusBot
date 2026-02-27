@@ -5,10 +5,16 @@ import time
 from CEACStatusBot.captcha import CaptchaHandle, OnnxCaptchaHandle
 
 def query_status(location, application_num, passport_number, surname, captchaHandle: CaptchaHandle = OnnxCaptchaHandle("captcha.onnx")):
-    isSuccess = False
     failCount = 0
+    result = {
+        "success": False,
+    }
+    backupTime = 5
 
-    while not isSuccess and failCount < 5:
+    while failCount < 5:
+        if failCount > 0:
+            print(f"Retrying... Attempt {failCount + 1} / 5 in {backupTime} seconds")
+            time.sleep(backupTime)
         failCount += 1
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
@@ -27,7 +33,6 @@ def query_status(location, application_num, passport_number, surname, captchaHan
             r = session.get(url=f"{ROOT}/ceacstattracker/status.aspx?App=NIV", headers=headers)
         except Exception as e:
             print(e)
-            isSuccess = False
             continue
 
         soup = BeautifulSoup(r.text, features="lxml")
@@ -91,13 +96,11 @@ def query_status(location, application_num, passport_number, surname, captchaHan
             r = session.post(url=f"{ROOT}/ceacstattracker/status.aspx", headers=headers, data=data)
         except Exception as e:
             print(e)
-            isSuccess = False
             continue
 
         soup = BeautifulSoup(r.text, features="lxml")
         status_tag = soup.find("span", id="ctl00_ContentPlaceHolder1_ucApplicationStatusView_lblStatus")
         if not status_tag:
-            isSuccess = False
             continue
 
         application_num_returned = soup.find("span", id="ctl00_ContentPlaceHolder1_ucApplicationStatusView_lblCaseNo").string
@@ -108,8 +111,7 @@ def query_status(location, application_num, passport_number, surname, captchaHan
         case_last_updated = soup.find("span", id="ctl00_ContentPlaceHolder1_ucApplicationStatusView_lblStatusDate").string
         description = soup.find("span", id="ctl00_ContentPlaceHolder1_ucApplicationStatusView_lblMessage").string
 
-        isSuccess = True
-        result = {
+        result.update({
             "success": True,
             "time": str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())),
             "visa_type": visa_type,
@@ -119,10 +121,7 @@ def query_status(location, application_num, passport_number, surname, captchaHan
             "description": description,
             "application_num": application_num_returned,
             "application_num_origin": application_num
-        }
+        })
+        break
 
-    if not isSuccess:
-        result = {
-            "success": False,
-        }
     return result
