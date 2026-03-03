@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *' # At 00:00 on Monday
+    - cron: '0 * * * *' # Every hour
 
 jobs:
   build:
