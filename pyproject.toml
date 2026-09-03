@@ -12,7 +12,9 @@ dependencies = [
     "pillow>=11.2.1",
     "python-dotenv>=1.1.1",
     "pytz>=2025.2",
-    "requests>=2.32.3",
+    "cloudscraper>=1.2.71",
+    "curl-cffi>=0.7.0",
+    "nodriver>=0.50.3",
 ]
 
 [tool.ruff]

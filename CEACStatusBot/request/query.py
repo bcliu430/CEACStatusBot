@@ -1,8 +1,119 @@
-import requests
-from bs4 import BeautifulSoup
+import asyncio
 import time
 
+from bs4 import BeautifulSoup
+from curl_cffi import requests
+
 from CEACStatusBot.captcha import CaptchaHandle, OnnxCaptchaHandle
+
+CF_INDICATORS = [
+    "cloudflare", "just a moment", "checking your browser",
+    "challenge-platform", "attention required", "verify you are human",
+]
+
+IMPERSONATE_PROFILES = ["chrome", "chrome110", "edge101", "safari15_5"]
+
+
+def _is_cf_challenge(resp):
+    if resp.status_code not in (403, 429, 503):
+        return False
+    text = (resp.text or "").lower()
+    return any(indicator in text for indicator in CF_INDICATORS)
+
+
+async def _solve_cf_with_nodriver(url):
+    """Use nodriver (undetectable Chrome) to solve Cloudflare Turnstile.
+    Returns (cookies_dict, page_html, user_agent) or (None, None, None).
+    """
+    import nodriver as uc
+
+    browser = await uc.start(headless=False)
+    try:
+        page = await browser.get(url)
+
+        for _ in range(30):
+            await asyncio.sleep(2)
+            title = await page.evaluate("document.title")
+            cookies = await browser.cookies.get_all()
+            has_clearance = any(c.name == "cf_clearance" for c in cookies)
+
+            if has_clearance or ("just a moment" not in title.lower() and title):
+                await asyncio.sleep(2)
+                cookie_dict = {c.name: c.value for c in cookies}
+                html = await page.get_content()
+                ua = await page.evaluate("navigator.userAgent")
+                print(f"nodriver solved CF in {_ * 2}s, got {len(cookie_dict)} cookies")
+                return cookie_dict, html, ua
+
+        print("nodriver timed out waiting for CF resolution")
+        return None, None, None
+    finally:
+        browser.stop()
+
+
+def _solve_cf_nodriver_sync(url):
+    """Sync wrapper for the async nodriver solver."""
+    try:
+        loop = asyncio.new_event_loop()
+        return loop.run_until_complete(_solve_cf_with_nodriver(url))
+    finally:
+        loop.close()
+
+
+def _create_bypass_session(url, headers):
+    """Try multiple strategies to get past Cloudflare and return (session, response)."""
+    # Strategy 1: curl_cffi with different impersonate profiles
+    for profile in IMPERSONATE_PROFILES:
+        try:
+            session = requests.Session(impersonate=profile)
+            r = session.get(url=url, headers=headers, timeout=15)
+            if not _is_cf_challenge(r):
+                print(f"Connected with curl_cffi impersonate={profile}")
+                return session, r
+        except Exception as e:
+            print(f"curl_cffi ({profile}) failed: {e}")
+
+    print("Cloudflare challenge detected, attempting bypass...")
+
+    # Strategy 2: cloudscraper (solves older Cloudflare JS challenges)
+    try:
+        import cloudscraper
+        print("Trying cloudscraper bypass...")
+        scraper = cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "darwin", "mobile": False},
+        )
+        r = scraper.get(url, headers=headers, timeout=20)
+        if not _is_cf_challenge(r):
+            print("Cloudflare bypassed via cloudscraper")
+            return scraper, r
+        print("cloudscraper did not bypass Cloudflare")
+    except ImportError:
+        print("cloudscraper not installed, skipping")
+    except Exception as e:
+        print(f"cloudscraper failed: {e}")
+
+    # Strategy 3: nodriver (undetectable Chrome via CDP)
+    try:
+        print("Trying nodriver (undetectable Chrome)...")
+        cookie_dict, html, ua = _solve_cf_nodriver_sync(url)
+        if cookie_dict and html:
+            req_headers = dict(headers)
+            req_headers["User-Agent"] = ua
+            session = requests.Session(impersonate="chrome")
+            for name, value in cookie_dict.items():
+                session.cookies.set(name, value)
+            r = session.get(url=url, headers=req_headers, timeout=15)
+            if not _is_cf_challenge(r):
+                print("Cloudflare bypassed via nodriver cookies + curl_cffi")
+                return session, r
+            print("nodriver cookies did not work with curl_cffi, using page content directly")
+    except ImportError:
+        print("nodriver not installed, skipping")
+    except Exception as e:
+        print(f"nodriver failed: {e}")
+
+    return None, None
+
 
 def query_status(location, application_num, passport_number, surname, captchaHandle: CaptchaHandle = OnnxCaptchaHandle("captcha.onnx")):
     failCount = 0
@@ -17,7 +128,7 @@ def query_status(location, application_num, passport_number, surname, captchaHan
             time.sleep(backupTime)
         failCount += 1
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
             "Accept-Encoding": "gzip, deflate, br",
             "Accept-Language": "en,zh-CN;q=0.9,zh;q=0.8",
@@ -26,11 +137,14 @@ def query_status(location, application_num, passport_number, surname, captchaHan
             "Host": "ceac.state.gov",
         }
 
-        session = requests.Session()
         ROOT = "https://ceac.state.gov"
+        page_url = f"{ROOT}/ceacstattracker/status.aspx?App=NIV"
 
         try:
-            r = session.get(url=f"{ROOT}/ceacstattracker/status.aspx?App=NIV", headers=headers)
+            session, r = _create_bypass_session(page_url, headers)
+            if session is None:
+                print("All Cloudflare bypass strategies failed")
+                continue
         except Exception as e:
             print(e)
             continue
@@ -39,6 +153,10 @@ def query_status(location, application_num, passport_number, surname, captchaHan
 
         # Find captcha image
         captcha = soup.find(name="img", id="c_status_ctl00_contentplaceholder1_defaultcaptcha_CaptchaImage")
+        if not captcha:
+            print("Captcha image not found on page")
+            continue
+
         image_url = ROOT + captcha["src"]
         img_resp = session.get(image_url)
 
